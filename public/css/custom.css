@@ -1,0 +1,133 @@
+/* Custom CSS for Book Service Component */
+.book-service-container {
+    background-color: #f8f9fa;
+    min-height: 100vh;
+    padding: 50px 0;
+}
+
+.booking-header {
+    margin-bottom: 30px;
+}
+
+.booking-header h1 {
+    color: #333;
+    font-weight: 700;
+}
+
+.service-providers-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
+}
+
+.service-provider-card {
+    background-color: white;
+    border-radius: 15px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    overflow: hidden;
+    transition: all 0.3s ease;
+    width: 100%;
+    max-width: 350px;
+}
+
+.service-provider-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+}
+
+.provider-header {
+    background-color: #f1f3f5;
+    padding: 20px;
+    text-align: center;
+}
+
+.provider-avatar {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    overflow: hidden;
+    margin: 0 auto 15px;
+    border: 4px solid white;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+}
+
+.provider-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.provider-name {
+    color: #333;
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.provider-rating {
+    display: block;
+    margin-top: 10px;
+}
+
+.provider-services {
+    padding: 15px;
+}
+
+.service-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.service-item:last-child {
+    border-bottom: none;
+}
+
+.service-details h4 {
+    margin: 0;
+    font-size: 16px;
+    color: #495057;
+}
+
+.service-price {
+    color: #28a745;
+    font-weight: bold;
+    margin: 0;
+}
+
+.provider-actions {
+    display: flex;
+    padding: 15px;
+    background-color: #f8f9fa;
+    gap: 10px;
+}
+
+.btn-book-now {
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.btn-view-profile {
+    flex-grow: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.no-providers-alert {
+    background-color: white;
+    border: 2px dashed #17a2b8;
+    padding: 30px;
+    text-align: center;
+}
+
+.no-providers-alert i {
+    color: #17a2b8;
+    margin-bottom: 20px;
+}
