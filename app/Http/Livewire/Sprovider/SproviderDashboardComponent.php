@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Notification;
+use App\Models\Payment;
 
 class SproviderDashboardComponent extends Component
 {
@@ -30,13 +31,15 @@ class SproviderDashboardComponent extends Component
     public $selectedCategory = null;
     public $servicePrice = '';
     public $user;
-    public $profilePicture;
     public $nidVerificationStatus;
     public $nidFile;
     public $nidNumber;
     public $editingServiceId = null;
     public $editingServicePrice = null;
     public $bookings;
+    public $showEarningsOverview = false;
+    public $monthlyEarnings = [];
+    public $totalEarnings = 0;
 
     public function mount()
     {
@@ -63,7 +66,7 @@ class SproviderDashboardComponent extends Component
     {
         $this->activeSection = 'bookings';
         $this->loadBookingCounts(); // Reload booking counts each time bookings are shown
-        
+
         $query = Booking::where('service_provider_id', auth()->id())
             ->with(['customer', 'service']);
 
@@ -83,7 +86,7 @@ class SproviderDashboardComponent extends Component
         // Log the bookings for debugging
         \Log::info('Loaded Bookings', [
             'count' => $this->bookings->count(),
-            'bookings' => $this->bookings->map(function($booking) {
+            'bookings' => $this->bookings->map(function ($booking) {
                 return [
                     'id' => $booking->id,
                     'customer_name' => $booking->customer->name ?? 'Unknown',
@@ -118,7 +121,6 @@ class SproviderDashboardComponent extends Component
 
     public function loadProfileDetails()
     {
-        $this->profilePicture = $this->user->profile_picture ?? 'default-profile.png';
         $this->nidVerificationStatus = $this->user->nid_verification_status ?? 'not_verified';
     }
 
@@ -201,99 +203,6 @@ class SproviderDashboardComponent extends Component
         }
     }
 
-    public function uploadProfilePicture()
-    {
-        // Extensive debugging
-        \Log::info('Profile Picture Upload Attempt - Detailed', [
-            'profilePicture' => [
-                'type' => gettype($this->profilePicture),
-                'class' => is_object($this->profilePicture) ? get_class($this->profilePicture) : 'not an object',
-                'value' => $this->profilePicture,
-                'methods_available' => is_object($this->profilePicture) ? get_class_methods($this->profilePicture) : 'N/A'
-            ]
-        ]);
-
-        // Check if file exists and is valid
-        if (!$this->profilePicture) {
-            \Log::error('No profile picture uploaded');
-            session()->flash('error', 'Please select a profile picture.');
-            return;
-        }
-
-        try {
-            // Attempt to get file details
-            if (method_exists($this->profilePicture, 'getClientOriginalName')) {
-                $fileDetails = [
-                    'original_name' => $this->profilePicture->getClientOriginalName(),
-                    'mime_type' => method_exists($this->profilePicture, 'getMimeType') ? $this->profilePicture->getMimeType() : 'Unknown',
-                    'extension' => method_exists($this->profilePicture, 'getClientOriginalExtension') ? $this->profilePicture->getClientOriginalExtension() : 'Unknown',
-                    'size' => method_exists($this->profilePicture, 'getSize') ? $this->profilePicture->getSize() : 'Unknown'
-                ];
-                
-                \Log::info('File Details', $fileDetails);
-            }
-
-            // Manual validation
-            if (!$this->profilePicture instanceof \Illuminate\Http\UploadedFile && 
-                !$this->profilePicture instanceof \Livewire\TemporaryUploadedFile) {
-                throw new \Exception('Invalid file type');
-            }
-
-            // Validate file manually
-            $allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif'];
-            $maxFileSize = 2 * 1024 * 1024; // 2MB
-
-            $fileMimeType = $this->profilePicture->getMimeType();
-            $fileSize = $this->profilePicture->getSize();
-
-            if (!in_array($fileMimeType, $allowedMimeTypes)) {
-                throw new \Exception('Invalid file type. Only JPG, PNG, and GIF are allowed.');
-            }
-
-            if ($fileSize > $maxFileSize) {
-                throw new \Exception('File is too large. Maximum size is 2MB.');
-            }
-
-            // Generate unique filename
-            $filename = 'profile_' . auth()->id() . '_' . uniqid() . '.' . $this->profilePicture->getClientOriginalExtension();
-            
-            // Store file
-            $path = $this->profilePicture->storeAs('profile_pictures', $filename, 'public');
-
-            // Update user's profile picture
-            $user = auth()->user();
-            $user->profile_picture = $path;
-            $user->save();
-
-            // Flash success message
-            session()->flash('message', 'Profile picture uploaded successfully.');
-            
-            // Reset file input
-            $this->reset('profilePicture');
-
-        } catch (\Exception $e) {
-            // Log the full error for debugging
-            \Log::error('Profile Picture Upload Error', [
-                'error_message' => $e->getMessage(),
-                'error_trace' => $e->getTraceAsString(),
-                'file_details' => isset($fileDetails) ? $fileDetails : 'No file details available'
-            ]);
-
-            // Flash error message
-            session()->flash('error', $e->getMessage());
-        }
-    }
-
-    public function updatedProfilePicture($value)
-    {
-        // Log when file is selected
-        Log::info('Profile Picture Selected', [
-            'value_type' => gettype($value),
-            'value_class' => is_object($value) ? get_class($value) : 'not an object',
-            'original_name' => $value ? $value->getClientOriginalName() : 'N/A'
-        ]);
-    }
-
     public function verifyNID()
     {
         // Validate NID number and file
@@ -312,7 +221,7 @@ class SproviderDashboardComponent extends Component
         try {
             // Generate a unique filename for the NID document
             $filename = 'nid_' . auth()->id() . '_' . uniqid() . '.' . $this->nidFile->getClientOriginalExtension();
-            
+
             // Store the NID file
             $nidDocumentPath = $this->nidFile->storeAs('nid_documents', $filename, 'public');
             $relativePath = 'nid_documents/' . $filename;
@@ -333,7 +242,6 @@ class SproviderDashboardComponent extends Component
 
             // Update local NID verification status
             $this->nidVerificationStatus = 'pending';
-
         } catch (\Exception $e) {
             // Log the error
             \Log::error('NID Verification Error: ' . $e->getMessage());
@@ -446,7 +354,7 @@ class SproviderDashboardComponent extends Component
     {
         try {
             $booking = Booking::findOrFail($bookingId);
-            
+
             if ($booking->service_provider_id !== auth()->id()) {
                 throw new \Exception('Unauthorized action');
             }
@@ -473,7 +381,7 @@ class SproviderDashboardComponent extends Component
     {
         try {
             $booking = Booking::findOrFail($bookingId);
-            
+
             if ($booking->service_provider_id !== auth()->id()) {
                 throw new \Exception('Unauthorized action');
             }
@@ -501,7 +409,7 @@ class SproviderDashboardComponent extends Component
     {
         try {
             $booking = Booking::findOrFail($bookingId);
-            
+
             if ($booking->service_provider_id !== auth()->id()) {
                 throw new \Exception('Unauthorized action');
             }
@@ -510,9 +418,26 @@ class SproviderDashboardComponent extends Component
                 throw new \Exception('Only accepted bookings can be marked as completed');
             }
 
-            $booking->update([
-                'status' => Booking::STATUS_COMPLETED
-            ]);
+            // Find the payment for this booking
+            $payment = Payment::where('booking_id', $bookingId)
+                ->where('payment_method', 'cod')
+                ->where('status', 'pending')
+                ->first();
+
+            // Update both booking and payment status
+            DB::transaction(function () use ($booking, $payment) {
+                // Update booking status
+                $booking->update([
+                    'status' => Booking::STATUS_COMPLETED
+                ]);
+
+                // Update payment status for COD payments
+                if ($payment) {
+                    $payment->update([
+                        'status' => 'completed'
+                    ]);
+                }
+            });
 
             // Create notification for customer
             Notification::createBookingStatusNotification($booking, 'Your booking has been completed.');
@@ -524,22 +449,63 @@ class SproviderDashboardComponent extends Component
         }
     }
 
+    public function toggleEarningsOverview()
+    {
+        $this->showEarningsOverview = !$this->showEarningsOverview;
+        if ($this->showEarningsOverview) {
+            $this->loadEarningsData();
+        }
+    }
+
+    public function loadEarningsData()
+    {
+        // Get all completed bookings for the current service provider
+        $earnings = Booking::where('service_provider_id', auth()->id())
+            ->where('status', Booking::STATUS_COMPLETED)
+            ->whereYear('updated_at', now()->year)
+            ->select(
+                DB::raw('MONTH(updated_at) as month'),
+                DB::raw('SUM(total_price) as total')
+            )
+            ->groupBy('month')
+            ->orderBy('month')
+            ->get();
+
+        // Initialize all months with zero
+        $this->monthlyEarnings = array_fill(1, 12, 0);
+
+        // Fill in the actual earnings
+        foreach ($earnings as $earning) {
+            $this->monthlyEarnings[$earning->month] = $earning->total;
+        }
+
+        // Calculate total earnings
+        $this->totalEarnings = array_sum($this->monthlyEarnings);
+
+        // Optional: Add logging for debugging
+        \Log::info('Service Provider Earnings Calculation', [
+            'provider_id' => auth()->id(),
+            'year' => now()->year,
+            'monthly_earnings' => $this->monthlyEarnings,
+            'total_earnings' => $this->totalEarnings
+        ]);
+    }
+
     public function render()
     {
-        // Ensure the latest profile picture is loaded
-        $this->profilePicture = auth()->user()->profile_picture ?? 'default-profile.png';
-
         $serviceCategories = ServiceCategory::all();
-        
-        return view('livewire.sprovider.sprovider-dashboard-component', [
+
+        return view('livewire.service-provider.service-provider-dashboard-component', [
             'bookingCounts' => $this->bookingCounts,
             'services' => $this->services,
             'user' => auth()->user(),
-            'profilePicture' => auth()->user()->profile_picture ?? 'default-profile.png',
             'nidVerificationStatus' => $this->nidVerificationStatus,
             'serviceCategories' => $serviceCategories,
             'activeTab' => $this->activeTab,
-            'bookings' => $this->bookings ?? collect([])
+            'bookings' => $this->bookings ?? collect([]),
+            'showEarningsOverview' => $this->showEarningsOverview,
+            'monthlyEarnings' => $this->monthlyEarnings,
+            'totalEarnings' => $this->totalEarnings
         ])->layout('layouts.base');
     }
 }

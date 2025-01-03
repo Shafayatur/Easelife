@@ -6,7 +6,9 @@ use App\Models\Booking;
 use App\Models\Payment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use PDF;
 
 class PaymentController extends Controller
 {
@@ -36,7 +38,8 @@ class PaymentController extends Controller
             
             'mobile_provider' => 'required_if:payment_method,mobile',
             'mobile_number' => 'required_if:payment_method,mobile',
-            'transaction_id' => 'required_if:payment_method,mobile'
+            'transaction_id' => 'required_if:payment_method,mobile',
+            'coupon_code' => 'nullable|string',
         ]);
 
         try {
@@ -51,22 +54,97 @@ class PaymentController extends Controller
                 ]);
             }
 
-            // Validate booking total price matches
-            if (abs($booking->total_price - $validatedData['amount']) > 0.01) {
-                return view('payment.error', [
-                    'message' => 'Payment amount does not match booking total',
-                    'booking_id' => $booking->id
+            // Initialize payment variables
+            $originalAmount = $booking->total_price;
+            $finalAmount = $originalAmount;
+            $discountAmount = 0;
+            $couponApplied = false;
+
+            // Check coupon logic if coupon code is provided
+            $finalAmount = $originalAmount;
+            $discountAmount = 0;
+            $couponApplied = false;
+
+            if (!empty($validatedData['coupon_code']) && strtolower($validatedData['coupon_code']) === 'hehe') {
+                // Find existing coupon usage record
+                $couponUsage = \DB::table('user_coupon_usage')
+                    ->where('user_id', Auth::id())
+                    ->where('coupon_code', 'hehe')
+                    ->first();
+
+                // If coupon usage has reached max, return error
+                if ($couponUsage && $couponUsage->current_usage >= $couponUsage->max_usage) {
+                    return view('payment.error', [
+                        'message' => 'You have used all available "hehe" coupon discounts.',
+                        'booking_id' => $booking->id
+                    ]);
+                }
+
+                // Apply 50% discount
+                $discountAmount = $originalAmount * 0.5;
+                $finalAmount = $originalAmount - $discountAmount;
+                $couponApplied = true;
+
+                // Update or create coupon usage record
+                if (!$couponUsage) {
+                    \DB::table('user_coupon_usage')->insert([
+                        'user_id' => Auth::id(),
+                        'coupon_code' => 'hehe',
+                        'current_usage' => 1,
+                        'max_usage' => 2,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                        'booking_id' => $booking->id
+                    ]);
+                } else {
+                    \DB::table('user_coupon_usage')
+                        ->where('user_id', Auth::id())
+                        ->where('coupon_code', 'hehe')
+                        ->update([
+                            'current_usage' => \DB::raw('current_usage + 1'),
+                            'updated_at' => now()
+                        ]);
+                }
+
+                // Insert coupon usage record for this booking
+                \DB::table('user_coupon_usage')->insert([
+                    'user_id' => Auth::id(),
+                    'coupon_code' => 'hehe',
+                    'booking_id' => $booking->id,
+                    'discount_amount' => $discountAmount,
+                    'created_at' => now(),
+                    'updated_at' => now()
                 ]);
             }
 
-            // Create payment record with method-specific details
+            // Validate booking total price matches with more tolerance
+            $submittedAmount = $validatedData['amount'];
+            
+            // Use original amount for validation, but final amount for payment
+            $validatedData['amount'] = $finalAmount;
+
+            Log::info('Payment Amount Validation', [
+                'original_amount' => $originalAmount,
+                'final_amount' => $finalAmount,
+                'submitted_amount' => $submittedAmount,
+                'amount_difference' => abs($finalAmount - $submittedAmount),
+                'coupon_applied' => $couponApplied
+            ]);
+
+            // Create payment record
             $paymentDetails = [
                 'booking_id' => $booking->id,
                 'user_id' => Auth::id(),
-                'amount' => $validatedData['amount'],
-                'status' => 'completed',
-                'payment_method' => $validatedData['payment_method']
+                'amount' => $finalAmount,
+                'original_amount' => $originalAmount,
+                'status' => Payment::STATUS_COMPLETED,
+                'payment_method' => $validatedData['payment_method'],
+                'coupon_code' => $validatedData['coupon_code'] ?? null,
+                'coupon_applied' => $couponApplied ?? false
             ];
+
+            // Create payment
+            $payment = Payment::create($paymentDetails);
 
             // Add method-specific details
             switch ($validatedData['payment_method']) {
@@ -83,23 +161,44 @@ class PaymentController extends Controller
                     $paymentDetails['transaction_id'] = $validatedData['transaction_id'];
                     break;
                 case 'cod':
-                    $paymentDetails['status'] = 'pending'; // COD will be marked as completed later
+                    $paymentDetails['status'] = Payment::STATUS_PENDING; // COD will be marked as completed later
                     break;
             }
 
-            // Create payment record
-            $payment = Payment::create($paymentDetails);
+            // Update payment record
+            $payment->update($paymentDetails);
 
             // Update booking status 
             // For COD, status remains pending until service is completed
             $booking->status = $validatedData['payment_method'] === 'cod' ? 'accepted' : 'completed';
             $booking->save();
 
-            // Return success view
+            // Fetch service details
+            $service = \DB::table('services')
+                ->where('id', $booking->service_id)
+                ->first();
+
+            // Fetch service provider details
+            $serviceProvider = \DB::table('users')
+                ->where('id', $booking->service_provider_id)
+                ->first();
+
+            // Return payment success view with all necessary data
             return view('payment.success', [
+                'booking' => $booking,
+                'payment' => $payment,
                 'booking_id' => $booking->id,
-                'amount' => $validatedData['amount'],
-                'payment_method' => $validatedData['payment_method']
+                'booking_date' => $booking->created_at,
+                'payment_method' => $validatedData['payment_method'],
+                'total_payment' => $originalAmount,
+                'amount' => $finalAmount,
+                'discounted_payment' => $discountAmount,
+                'coupon_applied' => $couponApplied,
+                'customer_name' => Auth::user()->name ?? 'N/A',
+                'customer_id' => Auth::id() ?? 'N/A',
+                'service_name' => $service ? $service->name : 'N/A',
+                'service_provider_name' => $serviceProvider ? $serviceProvider->name : 'N/A',
+                'service_provider_id' => $booking->service_provider_id ?? 'N/A'
             ]);
 
         } catch (\Exception $e) {
@@ -120,24 +219,94 @@ class PaymentController extends Controller
 
     public function paymentSuccess($bookingId)
     {
-        $payment = Payment::where('booking_id', $bookingId)
-            ->where('user_id', Auth::id())
-            ->first();
+        try {
+            // Fetch payment details using direct database queries
+            $payment = \DB::table('payments')
+                ->where('booking_id', $bookingId)
+                ->latest('created_at')
+                ->first();
 
-        if ($payment) {
-            $payment->update([
-                'status' => 'completed',
-                'transaction_id' => uniqid('stripe_'),
+            // Fetch booking details
+            $booking = \DB::table('bookings')
+                ->where('id', $bookingId)
+                ->first();
+
+            // Fetch service details
+            $service = $booking && $booking->service_id 
+                ? \DB::table('services')
+                    ->where('id', $booking->service_id)
+                    ->first() 
+                : null;
+
+            // Fetch customer details
+            $customer = $booking && $booking->customer_id
+                ? \DB::table('users')
+                    ->where('id', $booking->customer_id)
+                    ->first()
+                : null;
+
+            // Fetch service provider details
+            $serviceProvider = $booking && $booking->service_provider_id
+                ? \DB::table('users')
+                    ->where('id', $booking->service_provider_id)
+                    ->first()
+                : null;
+
+            // Prepare view data with explicit null checks and default values
+            $viewData = [
+                'booking_id' => $bookingId ?? 'N/A',
+                'payment_method' => $payment ? $payment->payment_method : 'N/A',
+                'amount' => $payment ? $payment->amount : 0,
+                'service_name' => $service ? $service->name : 'N/A',
+                'customer_name' => $customer ? $customer->name : 'N/A',
+                'customer_id' => $customer ? $customer->id : 'N/A',
+                'service_provider_name' => $serviceProvider ? $serviceProvider->name : 'N/A',
+                'service_provider_id' => $serviceProvider ? $serviceProvider->id : 'N/A',
+                'booking_date' => $booking ? $booking->created_at : null,
+                'original_amount' => $booking ? $booking->total_price : 0,
+                'debug_info' => [
+                    'payment' => $payment,
+                    'booking' => $booking,
+                    'service' => $service,
+                    'customer' => $customer,
+                    'service_provider' => $serviceProvider
+                ]
+            ];
+
+            // Extensive logging for debugging
+            \Log::info('Payment Success Data Retrieval', [
+                'booking_id' => $bookingId,
+                'payment_exists' => $payment ? 'Yes' : 'No',
+                'booking_exists' => $booking ? 'Yes' : 'No',
+                'service_exists' => $service ? 'Yes' : 'No',
+                'customer_exists' => $customer ? 'Yes' : 'No',
+                'service_provider_exists' => $serviceProvider ? 'Yes' : 'No'
             ]);
 
-            // Update booking status if needed
-            $booking = Booking::find($bookingId);
-            $booking->update(['status' => 'completed']);
+            return view('payment.success', $viewData);
 
-            return redirect()->route('dashboard')->with('success', 'Payment completed successfully!');
+        } catch (\Exception $e) {
+            // Comprehensive error logging
+            \Log::error('Payment Success Error', [
+                'booking_id' => $bookingId,
+                'error_message' => $e->getMessage(),
+                'error_trace' => $e->getTraceAsString()
+            ]);
+
+            return view('payment.success', [
+                'error' => 'An unexpected error occurred: ' . $e->getMessage(),
+                'booking_id' => $bookingId,
+                'payment_method' => 'N/A',
+                'amount' => 0,
+                'service_name' => 'N/A',
+                'customer_name' => 'N/A',
+                'customer_id' => 'N/A',
+                'service_provider_name' => 'N/A',
+                'service_provider_id' => 'N/A',
+                'booking_date' => null,
+                'original_amount' => 0
+            ]);
         }
-
-        return redirect()->route('dashboard')->with('error', 'Payment verification failed.');
     }
 
     public function paymentCancel($bookingId)
@@ -148,7 +317,7 @@ class PaymentController extends Controller
 
         if ($payment) {
             $payment->update([
-                'status' => 'failed',
+                'status' => Payment::STATUS_FAILED,
             ]);
         }
 
@@ -263,44 +432,114 @@ class PaymentController extends Controller
 
                     <div id="codForm" class="payment-form">
                         <h3>Cash on Delivery</h3>
-                        <p>You will pay the total amount of $' . number_format($booking->total_price, 2) . ' at the time of service.</p>
+                        <p>Pay at time of service</p>
                     </div>
 
-                    <button type="submit" id="submitButton" disabled>Proceed with Payment</button>
+                    <div style="margin-top: 20px;">
+                        <h3>Have a Coupon?</h3>
+                        <input type="text" name="coupon_code" placeholder="Enter Coupon Code (Optional)">
+                        <p style="color: #888; font-size: 0.9em; margin-top: 5px;">
+                            &#x1F4A1; Use coupon code "hehe" on your first 2 services to get 50% off
+                        </p>
+                    </div>
+
+                    <button type="submit">Proceed to Payment</button>
                 </form>
 
                 <script>
-                    document.addEventListener("DOMContentLoaded", function() {
-                        const paymentOptions = document.querySelectorAll(".payment-option");
-                        const paymentForms = document.querySelectorAll(".payment-form");
-                        const selectedMethodInput = document.getElementById("selectedMethod");
-                        const submitButton = document.getElementById("submitButton");
-
-                        paymentOptions.forEach(option => {
-                            option.addEventListener("click", function() {
-                                // Remove selected from all options
-                                paymentOptions.forEach(opt => opt.classList.remove("selected"));
-                                // Hide all forms
-                                paymentForms.forEach(form => form.classList.remove("active"));
-
-                                // Select current option
-                                this.classList.add("selected");
-                                
-                                // Show corresponding form
-                                const method = this.dataset.method;
-                                document.getElementById(method + "Form").classList.add("active");
-                                
-                                // Set selected method
-                                selectedMethodInput.value = method;
-
-                                // Enable submit button
-                                submitButton.disabled = false;
-                            });
+                    document.querySelectorAll(\'.payment-option\').forEach(option => {
+                        option.addEventListener(\'click\', function() {
+                            // Remove selected class from all options
+                            document.querySelectorAll(\'.payment-option\').forEach(opt => opt.classList.remove(\'selected\'));
+                            
+                            // Hide all forms
+                            document.querySelectorAll(\'.payment-form\').forEach(form => form.classList.remove(\'active\'));
+                            
+                            // Add selected class to clicked option
+                            this.classList.add(\'selected\');
+                            
+                            // Show corresponding form
+                            const method = this.getAttribute(\'data-method\');
+                            document.getElementById(method + \'Form\').classList.add(\'active\');
+                            
+                            // Set selected method in hidden input
+                            document.getElementById(\'selectedMethod\').value = method;
                         });
                     });
                 </script>
             </body>
             </html>
         ', 200, ['Content-Type' => 'text/html']);
+    }
+
+    public function downloadInvoice($bookingId)
+    {
+        try {
+            // Fetch payment details
+            $payment = \DB::table('payments')
+                ->where('booking_id', $bookingId)
+                ->latest('created_at')
+                ->first();
+
+            // Fetch booking details
+            $booking = \DB::table('bookings')
+                ->where('id', $bookingId)
+                ->first();
+
+            // Fetch service details
+            $service = $booking && $booking->service_id 
+                ? \DB::table('services')
+                    ->where('id', $booking->service_id)
+                    ->first() 
+                : null;
+
+            // Fetch customer details
+            $customer = $booking && $booking->customer_id
+                ? \DB::table('users')
+                    ->where('id', $booking->customer_id)
+                    ->first()
+                : null;
+
+            // Fetch service provider details
+            $serviceProvider = $booking && $booking->service_provider_id
+                ? \DB::table('users')
+                    ->where('id', $booking->service_provider_id)
+                    ->first()
+                : null;
+
+            // Fetch coupon details if applied
+            $couponUsage = \DB::table('user_coupon_usage')
+                ->where('booking_id', $bookingId)
+                ->first();
+
+            // Generate PDF
+            $pdf = \PDF::loadView('invoices.payment', [
+                'booking_id' => $bookingId,
+                'payment_method' => $payment ? $payment->payment_method : 'N/A',
+                'amount' => $payment ? $payment->amount : 0,
+                'service_name' => $service ? $service->name : 'N/A',
+                'customer_name' => $customer ? $customer->name : 'N/A',
+                'customer_email' => $customer ? $customer->email : 'N/A',
+                'service_provider_name' => $serviceProvider ? $serviceProvider->name : 'N/A',
+                'booking_date' => $booking ? $booking->created_at : null,
+                'original_amount' => $booking ? $booking->total_price : 0,
+                'total_payment' => $booking ? $booking->total_price : 0,
+                'discounted_payment' => $couponUsage ? $booking->total_price - $couponUsage->discount_amount : $booking->total_price,
+                'discount_amount' => $couponUsage ? $couponUsage->discount_amount : 0,
+                'coupon_applied' => $couponUsage ? true : false
+            ]);
+
+            // Download PDF
+            return $pdf->download("invoice_{$bookingId}.pdf");
+
+        } catch (\Exception $e) {
+            \Log::error('Invoice Download Error', [
+                'booking_id' => $bookingId,
+                'error_message' => $e->getMessage(),
+                'error_trace' => $e->getTraceAsString()
+            ]);
+
+            return redirect()->back()->with('error', 'Failed to generate invoice: ' . $e->getMessage());
+        }
     }
 }

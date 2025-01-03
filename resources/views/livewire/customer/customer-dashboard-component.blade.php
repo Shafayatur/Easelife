@@ -3,6 +3,10 @@
     
     <div class="row">
         <div class="col-md-8">
+            <div class="d-flex justify-content-end mb-3">
+                <a href="{{ route('customer.profile') }}" class="btn btn-primary me-2">View Profile</a>
+                <a href="{{ route('customer.transaction_history') }}" class="btn btn-info">Transaction History</a>
+            </div>
             <div class="card">
                 <div class="card-header">
                     <h2 class="mb-0">My Services</h2>

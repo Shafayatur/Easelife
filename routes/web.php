@@ -5,13 +5,16 @@ use App\Http\Livewire\Admin\AdminDashboardComponent;
 use App\Http\Livewire\Admin\AdminServiceCategoryComponent;
 use App\Http\Livewire\BookServiceComponent;
 use App\Http\Livewire\Customer\CustomerDashboardComponent;
+use App\Http\Livewire\Customer\CustomerProfileComponent;
 use App\Http\Livewire\Customer\ServiceProvidersComponent;
+use App\Http\Livewire\Customer\TransactionHistoryComponent;
 use App\Http\Livewire\HomeComponent;
 use App\Http\Livewire\ServiceCategoriesComponent;
 use App\Http\Livewire\Sprovider\SproviderDashboardComponent;
 use App\Http\Livewire\ServiceProvider\DashboardComponent;
 use App\Http\Livewire\ServiceProvider\NotificationComponent;
 use App\Http\Livewire\ServiceProvider\ServiceProviderDashboardComponent;
+use App\Http\Livewire\ServiceProvider\ServiceProviderTransactionHistoryComponent;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -34,6 +37,8 @@ Route::get('/book-service/{category_id}', BookServiceComponent::class)->name('bo
 
 Route::middleware(['auth:sanctum', 'verified'])->group(function(){
     Route::get('/customer/dashboard',CustomerDashboardComponent::class)->name('customer.dashboard');
+    Route::get('/customer/profile',CustomerProfileComponent::class)->name('customer.profile');
+    Route::get('/customer/transaction-history', \App\Http\Livewire\Customer\TransactionHistoryComponent::class)->name('customer.transaction_history');
     // Service Providers Route
     Route::get('/service-providers/{categoryId}', \App\Http\Livewire\Customer\ServiceProvidersComponent::class)
         ->name('customer.service_providers');
@@ -84,6 +89,8 @@ Route::middleware(['auth:sanctum', 'verified', 'sp'])->group(function () {
 
     Route::get('/service-provider/notifications', \App\Http\Livewire\ServiceProvider\NotificationComponent::class)
         ->name('service_provider.notifications');
+
+    Route::get('/service-provider/transaction-history', \App\Http\Livewire\ServiceProvider\ServiceProviderTransactionHistoryComponent::class)->name('service_provider.transaction_history');
 });
 
 Route::middleware(['auth:sanctum', 'verified'])->group(function () {
@@ -94,6 +101,9 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     Route::post('/booking/{bookingId}/pay', [PaymentController::class, 'processPayment'])->name('payment.process');
     Route::get('/payment/success/{bookingId}', [PaymentController::class, 'paymentSuccess'])->name('payment.success');
     Route::get('/payment/cancel/{bookingId}', [PaymentController::class, 'paymentCancel'])->name('payment.cancel');
+    Route::match(['get', 'post'], '/invoice/download/{booking_id}', [PaymentController::class, 'downloadInvoice'])
+        ->name('invoice.download')
+        ->middleware(['auth']);
 });
 
 Route::middleware(['auth:sanctum', 'verified'])->get('/dashboard', function () {

@@ -1,243 +1,411 @@
 <div class="container-fluid">
     <div class="row">
-        <div class="col-md-12">
-            <h1 class="mb-4">Service Provider Dashboard</h1>
-            
-            @if(session('status'))
-                <div class="alert alert-{{ session('status') === 'pending' ? 'warning' : 'info' }} alert-dismissible fade show" role="alert">
-                    <strong>{{ ucfirst(session('status')) }}!</strong> {{ session('message') }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header card-header-primary">
+                    <h4 class="card-title">Servicessss Provider Dashboard</h4>
                 </div>
-            @endif
+                <div class="card-body">
+                    @if(session()->has('message'))
+                    <div class="alert alert-success">
+                        {{ session('message') }}
+                    </div>
+                    @endif
 
-            <!-- Statistics Cards -->
-            <div class="row mb-4">
-                <div class="col-md-3">
-                    <div class="card text-white bg-warning">
-                        <div class="card-header">New Requests</div>
-                        <div class="card-body">
-                            <h5 class="card-title">{{ $bookingCounts['new'] ?? 0 }} Requests</h5>
-                            <p class="card-text">Waiting for review</p>
-                        </div>
+                    @if(session()->has('error'))
+                    <div class="alert alert-danger">
+                        {{ session('error') }}
                     </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card text-white bg-info">
-                        <div class="card-header">Pending</div>
-                        <div class="card-body">
-                            <h5 class="card-title">{{ $bookingCounts['pending'] ?? 0 }} Requests</h5>
-                            <p class="card-text">In progress</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card text-white bg-success">
-                        <div class="card-header">Completed</div>
-                        <div class="card-body">
-                            <h5 class="card-title">{{ $bookingCounts['completed'] ?? 0 }} Requests</h5>
-                            <p class="card-text">Finished services</p>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="card text-white bg-danger">
-                        <div class="card-header">Rejected</div>
-                        <div class="card-body">
-                            <h5 class="card-title">{{ $bookingCounts['rejected'] ?? 0 }} Requests</h5>
-                            <p class="card-text">Declined requests</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+                    @endif
 
-            <!-- Action Buttons -->
-            <div class="row mb-4">
-                <div class="col-md-6">
-                    <button wire:click="showMyServices" class="btn btn-primary btn-block">
-                        <i class="material-icons">list</i> My Services
-                    </button>
-                </div>
-                <div class="col-md-6">
-                    <button wire:click="showBookings('all')" class="btn btn-primary btn-block">
-                        <i class="material-icons">calendar_today</i> Bookings
-                    </button>
-                </div>
-            </div>
-
-            <!-- My Services Section -->
-            @if($activeSection === 'my_services')
-                <div class="card">
-                    <div class="card-header card-header-primary">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h4 class="card-title mb-0">My Services</h4>
-                            <button class="btn btn-success">
-                                <i class="material-icons">add</i> Add Service
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <button wire:click="showMyServices" class="btn btn-{{ $activeSection === 'my_services' ? 'success' : 'primary' }} btn-block">
+                                My Services
                             </button>
                         </div>
+                        <div class="col-md-3">
+                            <button wire:click="showBookings('all')" class="btn btn-{{ $activeSection === 'bookings' ? 'success' : 'primary' }} btn-block">
+                                Bookings
+                                @if($bookingCounts['pending'] > 0)
+                                <span class="badge bg-danger ml-2">{{ $bookingCounts['pending'] }}</span>
+                                @endif
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <button wire:click="toggleEarningsOverview" class="btn btn-{{ $showEarningsOverview ? 'success' : 'primary' }} btn-block">
+                                Earnings Overview
+                            </button>
+                        </div>
+                        <div class="col-md-3">
+                            <a href="{{ route('service_provider.transaction_history') }}" class="btn btn-primary btn-block">
+                                Transaction History
+                            </a>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        @if($services->isEmpty())
-                            <div class="alert alert-info text-center">
-                                No services added yet. Click "Add Service" to get started.
-                            </div>
-                        @else
-                            <div class="table-responsive">
-                                <table class="table">
-                                    <thead>
-                                        <tr>
-                                            <th>Service Name</th>
-                                            <th>Category</th>
-                                            <th>Status</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($services as $service)
-                                            <tr>
-                                                <td>{{ $service->name }}</td>
-                                                <td>{{ $service->category->name }}</td>
-                                                <td>
-                                                    <span class="badge bg-{{ $service->is_active ? 'success' : 'warning' }}">
-                                                        {{ $service->is_active ? 'Active' : 'Inactive' }}
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <button class="btn btn-sm btn-info" wire:click="editService({{ $service->id }})">
-                                                        <i class="material-icons">edit</i>
-                                                    </button>
-                                                    <button class="btn btn-sm btn-danger" wire:click="deleteService({{ $service->id }})">
-                                                        <i class="material-icons">delete</i>
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                        @endif
-                    </div>
-                </div>
-            @endif
 
-            <!-- Bookings Section -->
-            @if(str_contains($activeSection ?? '', 'bookings_'))
-                <div class="card">
-                    <div class="card-header card-header-primary">
-                        <h4 class="card-title">Bookings Management</h4>
+                    @if($showEarningsOverview)
+                    <div class="earnings-overview-section">
+                        <div class="card">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0">Monthly Earnings Overview ({{ now()->year }})</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row mb-4">
+                                    <div class="col-12">
+                                        <h4 class="text-center">Total Earnings: ${{ number_format($totalEarnings, 2) }}</h4>
+                                    </div>
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered">
+                                        <thead>
+                                            <tr>
+                                                <th>Month</th>
+                                                <th>Earnings</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            @foreach($monthlyEarnings as $month => $earning)
+                                            <tr>
+                                                <td>{{ date("F", mktime(0, 0, 0, $month, 1)) }}</td>
+                                                <td>${{ number_format($earning, 2) }}</td>
+                                            </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="card-body">
-                        <!-- Booking Status Filters -->
-                        <div class="row mb-4">
-                            <div class="col-md-3">
-                                <button wire:click="showBookings('new')" 
-                                        class="btn btn-block btn-warning position-relative">
-                                    New Requests
-                                    @if($bookingCounts['new'] > 0)
-                                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                                            {{ $bookingCounts['new'] }}
-                                        </span>
-                                    @endif
-                                </button>
-                            </div>
-                            <div class="col-md-3">
-                                <button wire:click="showBookings('pending')" class="btn btn-block btn-info">
-                                    Pending
-                                </button>
-                            </div>
-                            <div class="col-md-3">
-                                <button wire:click="showBookings('completed')" class="btn btn-block btn-success">
-                                    Completed
-                                </button>
-                            </div>
-                            <div class="col-md-3">
-                                <button wire:click="showBookings('rejected')" class="btn btn-block btn-danger">
-                                    Rejected
-                                </button>
+                    @endif
+
+                    @if($activeSection === 'my_services')
+                    <div class="services-section">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5>My Services</h5>
+                            <button
+                                wire:click="addServiceCategory"
+                                class="btn btn-primary btn-sm rounded-pill px-4 py-2"
+                                data-toggle="modal"
+                                data-target="#addServiceModal">
+                                Add Services
+                            </button>
+                        </div>
+
+                        <!-- Add Service Modal -->
+                        <div wire:ignore.self class="modal fade" id="addServiceModal" tabindex="-1" role="dialog" aria-labelledby="addServiceModalLabel" aria-hidden="true">
+                            <div class="modal-dialog" role="document">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title" id="addServiceModalLabel">Add New Service</h5>
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                    </div>
+                                    <div class="modal-body">
+                                        <form wire:submit.prevent="saveNewService">
+                                            <div class="form-group">
+                                                <label for="selectedCategory">Select Service Category</label>
+                                                <select
+                                                    wire:model="selectedCategory"
+                                                    class="form-control"
+                                                    id="selectedCategory"
+                                                    required>
+                                                    <option value="">Choose a category</option>
+                                                    @foreach($serviceCategories as $category)
+                                                    <option value="{{ $category->id }}">{{ $category->name }}</option>
+                                                    @endforeach
+                                                </select>
+                                                @error('selectedCategory')
+                                                <span class="text-danger">{{ $message }}</span>
+                                                @enderror
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label for="servicePrice">Price</label>
+                                                <input
+                                                    type="number"
+                                                    wire:model="servicePrice"
+                                                    step="0.01"
+                                                    class="form-control"
+                                                    id="servicePrice"
+                                                    placeholder="Enter service price"
+                                                    required>
+                                                @error('servicePrice')
+                                                <span class="text-danger">{{ $message }}</span>
+                                                @enderror
+                                            </div>
+
+                                            <button type="submit" class="btn btn-primary btn-lg rounded-pill px-4 py-2">Save Service</button>
+                                        </form>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Bookings Table -->
-                        @if($bookings->isEmpty())
-                            <div class="alert alert-info text-center">
-                                No bookings found for the selected status.
-                            </div>
+                        @if($services->isEmpty())
+                        <div class="alert alert-info text-center">
+                            No services added yet. Click "Add Service" to get started.
+                        </div>
                         @else
-                            <div class="table-responsive">
-                                <table class="table">
-                                    <thead>
-                                        <tr>
-                                            <th>Service</th>
-                                            <th>Customer</th>
-                                            <th>Date & Time</th>
-                                            <th>Status</th>
-                                            <th>Payment Received</th>
-                                            <th>Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach($bookings as $booking)
-                                            <tr>
-                                                <td>{{ $booking->service->name }}</td>
-                                                <td>{{ $booking->customer->name }}</td>
-                                                <td>{{ $booking->scheduled_date->format('d M Y H:i') }}</td>
-                                                <td>
-                                                    <span class="badge bg-{{ $booking->status_color }}">
-                                                        {{ ucfirst($booking->status) }}
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    @php
-                                                        $payment = $booking->payments()->first();
-                                                    @endphp
-                                                    @if($payment)
-                                                        @if($payment->status == 'completed')
-                                                            <span class="badge badge-success">Received</span>
-                                                        @else
-                                                            <button 
-                                                                wire:click="markPaymentReceived({{ $booking->id }})" 
-                                                                class="btn btn-sm btn-outline-success">
-                                                                Mark as Received
-                                                            </button>
-                                                        @endif
-                                                    @else
-                                                        <button 
-                                                            wire:click="markPaymentReceived({{ $booking->id }})" 
-                                                            class="btn btn-sm btn-outline-warning">
-                                                            Mark Payment
-                                                        </button>
-                                                    @endif
-                                                </td>
-                                                <td>
-                                                    @if($booking->status === 'new')
-                                                        <button wire:click="acceptBooking({{ $booking->id }})" 
-                                                                class="btn btn-sm btn-success">
-                                                            <i class="material-icons">check</i>
-                                                        </button>
-                                                        <button wire:click="rejectBooking({{ $booking->id }})" 
-                                                                class="btn btn-sm btn-danger">
-                                                            <i class="material-icons">close</i>
-                                                        </button>
-                                                    @endif
-                                                    @if($booking->status === 'pending')
-                                                        <button wire:click="completeBooking({{ $booking->id }})" 
-                                                                class="btn btn-sm btn-success">
-                                                            <i class="material-icons">done_all</i>
-                                                        </button>
-                                                    @endif
-                                                    <button wire:click="viewBookingDetails({{ $booking->id }})" 
-                                                            class="btn btn-sm btn-info">
-                                                        <i class="material-icons">visibility</i>
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Service Name</th>
+                                    <th>Category</th>
+                                    <th>Price</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($services as $service)
+                                <tr>
+                                    <td>{{ $service->name }}</td>
+                                    <td>{{ $service->category->name ?? 'Uncategorized' }}</td>
+                                    <td>{{ number_format($service->price, 2) }}</td>
+                                    <td>
+                                        @if($editingServiceId === $service->id)
+                                        <div class="input-group">
+                                            <input
+                                                type="number"
+                                                class="form-control form-control-sm"
+                                                wire:model="editingServicePrice"
+                                                step="0.01"
+                                                min="0">
+                                            <div class="input-group-append">
+                                                <button
+                                                    class="btn btn-sm btn-success"
+                                                    wire:click="updateServicePrice()">
+                                                    <i class="material-icons">save</i>
+                                                </button>
+                                                <button
+                                                    class="btn btn-sm btn-secondary"
+                                                    wire:click="cancelEditPrice()">
+                                                    <i class="material-icons">close</i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        @else
+                                        <button
+                                            wire:click="editServicePrice({{ $service->id }})"
+                                            class="btn btn-sm btn-info mr-2">
+                                            Edit Price
+                                        </button>
+                                        <button
+                                            wire:click="deleteService({{ $service->id }})"
+                                            class="btn btn-sm btn-danger"
+                                            onclick="confirm('Are you sure you want to delete this service?') || event.stopImmediatePropagation()">
+                                            Delete
+                                        </button>
+                                        @endif
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
                         @endif
                     </div>
+                    @elseif($activeSection === 'bookings')
+                    <div class="bookings-section">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5>My Bookings</h5>
+                            <div class="btn-group">
+                                <button wire:click="showBookings('all')" class="btn btn-sm btn-outline-primary">All</button>
+                                <button wire:click="showBookings('pending')" class="btn btn-sm btn-outline-warning">Pending ({{ $bookingCounts['pending'] }})</button>
+                                <button wire:click="showBookings('accepted')" class="btn btn-sm btn-outline-success">Accepted ({{ $bookingCounts['accepted'] }})</button>
+                                <button wire:click="showBookings('completed')" class="btn btn-sm btn-outline-info">Completed ({{ $bookingCounts['completed'] }})</button>
+                                <button wire:click="showBookings('rejected')" class="btn btn-sm btn-outline-danger">Rejected ({{ $bookingCounts['rejected'] }})</button>
+                            </div>
+                        </div>
+
+                        @if($bookings->isEmpty())
+                        <div class="alert alert-info text-center">
+                            No bookings found.
+                        </div>
+                        @else
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Service</th>
+                                        <th>Customer</th>
+                                        <th>Date & Time</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach($bookings as $booking)
+                                    <tr>
+                                        <td>
+                                            {{ $booking->service->name }}<br>
+                                            <small class="text-muted">Price: ${{ number_format($booking->total_price, 2) }}</small>
+                                        </td>
+                                        <td>
+                                            {{ $booking->customer->name }}<br>
+                                            <small class="text-muted">{{ $booking->customer->email }}</small>
+                                        </td>
+                                        <td>
+                                            {{ \Carbon\Carbon::parse($booking->date)->format('M d, Y') }}<br>
+                                            <small class="text-muted">{{ \Carbon\Carbon::parse($booking->time)->format('h:i A') }}</small>
+                                        </td>
+                                        <td>
+                                            <span class="badge badge-{{ $booking->status_color }}">
+                                                {{ $booking->status_label }}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            @if($booking->status === App\Models\Booking::STATUS_PENDING)
+                                            <button
+                                                wire:click="acceptBooking({{ $booking->id }})"
+                                                class="btn btn-sm btn-success"
+                                                onclick="return confirm('Are you sure you want to accept this booking?')">
+                                                Accept
+                                            </button>
+                                            <button
+                                                wire:click="rejectBooking({{ $booking->id }})"
+                                                class="btn btn-sm btn-danger"
+                                                onclick="return confirm('Are you sure you want to reject this booking?')">
+                                                Reject
+                                            </button>
+                                            @elseif($booking->status === App\Models\Booking::STATUS_ACCEPTED)
+                                            <button
+                                                wire:click="completeBooking({{ $booking->id }})"
+                                                class="btn btn-sm btn-info"
+                                                onclick="return confirm('Are you sure you want to mark this booking as completed?')">
+                                                Mark Complete
+                                            </button>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                    @if($booking->additional_description)
+                                    <tr class="table-light">
+                                        <td colspan="5">
+                                            <strong>Additional Notes:</strong><br>
+                                            {{ $booking->additional_description }}
+                                        </td>
+                                    </tr>
+                                    @endif
+                                    @if($booking->status === App\Models\Booking::STATUS_REJECTED && $booking->rejection_reason)
+                                    <tr class="table-danger">
+                                        <td colspan="5">
+                                            <strong>Rejection Reason:</strong><br>
+                                            {{ $booking->rejection_reason }}
+                                        </td>
+                                    </tr>
+                                    @endif
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                        @endif
+                    </div>
+                    @endif
                 </div>
-            @endif
+            </div>
+        </div>
+        <div class="col-md-6">
+            <!-- User Information -->
+            <div class="user-info mb-4">
+                <h4 class="text-center mb-3">User Details</h4>
+                <table class="table table-bordered table-striped">
+                    <tbody>
+                        <tr>
+                            <th scope="row" class="w-25">Name</th>
+                            <td>{{ $user->name }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Email</th>
+                            <td>{{ $user->email }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Phone</th>
+                            <td>{{ $user->phone ?? 'Not provided' }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Registered On</th>
+                            <td>{{ $user->created_at->format('d M Y') }}</td>
+                        </tr>
+                        <tr>
+                            <th scope="row">Last Updated</th>
+                            <td>{{ $user->updated_at->format('d M Y') }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- NID Verification -->
+            <div class="nid-verification mt-4">
+                <h4 class="text-center mb-3">NID Verification</h4>
+
+                @if($nidVerificationStatus == 'not_verified')
+                <form wire:submit.prevent="verifyNID" class="needs-validation" novalidate>
+                    <div class="form-group mb-3">
+                        <label for="nidNumber">NID Number</label>
+                        <input
+                            type="text"
+                            wire:model="nidNumber"
+                            id="nidNumber"
+                            placeholder="Enter NID Number"
+                            class="form-control @error('nidNumber') is-invalid @enderror"
+                            required>
+                        @error('nidNumber')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="nidFile">NID Document</label>
+                        <input
+                            type="file"
+                            wire:model="nidFile"
+                            id="nidFile"
+                            accept="image/*"
+                            class="form-control @error('nidFile') is-invalid @enderror"
+                            required>
+                        @error('nidFile')
+                        <div class="invalid-feedback">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <button
+                        type="submit"
+                        class="btn btn-primary btn-block"
+                        wire:loading.attr="disabled">
+                        <span wire:loading.remove>Submit for Verification</span>
+                        <span wire:loading>Processing...</span>
+                    </button>
+                </form>
+                @elseif($nidVerificationStatus == 'pending')
+                <div class="alert alert-warning text-center">
+                    NID Verification Pending
+                </div>
+                @elseif($nidVerificationStatus == 'verified')
+                <div class="alert alert-success text-center">
+                    NID Verified
+                </div>
+                @endif
+
+                @if(session()->has('error'))
+                <div class="alert alert-danger mt-3">
+                    {{ session('error') }}
+                </div>
+                @endif
+
+                @if(session()->has('message'))
+                <div class="alert alert-success mt-3">
+                    {{ session('message') }}
+                </div>
+                @endif
+            </div>
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('livewire:load', function() {
+        $('#addServiceModal').on('hidden.bs.modal', function() {
+            @this.call('resetForm');
+        });
+    });
+</script>

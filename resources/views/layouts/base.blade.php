@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>EaseLife - Simplifying home services for you</title>
@@ -13,15 +14,16 @@
     <link href="{{asset('assets/css/chblue.css')}}" rel="stylesheet" media="screen">
     <link href="{{asset('assets/css/dtb/jquery.dataTables.min.css')}}" rel="stylesheet" media="screen">
     <link href="{{asset('assets/css/select2.min.css')}}" rel="stylesheet" media="screen">
-    <link href="{{asset('assets/css/toastr.min.css')}}" rel="stylesheet" media="screen">        
+    <link href="{{asset('assets/css/toastr.min.css')}}" rel="stylesheet" media="screen">
     <script type="text/javascript" src="{{asset('assets/js/jquery.js')}}"></script>
     <script type="text/javascript" src="{{asset('assets/js/jquery-ui.1.10.4.min.js')}}"></script>
     <script type="text/javascript" src="{{asset('assets/js/toastr.min.js')}}"></script>
     <script type="text/javascript" src="{{asset('assets/js/modernizr.js')}}"></script>
-    @livewireStyles 
+    @livewireStyles
     <!-- Custom Styles -->
     <link rel="stylesheet" href="{{ asset('css/custom-styles.css') }}">
 </head>
+
 <body>
     <div id="layout">
         <div class="info-head">
@@ -61,7 +63,7 @@
                             <span style="display: block; font-size: 1rem; color: #6c757d; margin-top: 4px; position: absolute; left: 50%; transform: translateX(-50%); white-space: nowrap;">
                               Simplifying Home Services for you
                             </span></h3> --}}
-                        <a href="index.php.html"><img src = "{{asset('assets/img/easelife.PNG')}}"></a>
+                        <a href="index.php.html"><img src="{{asset('assets/img/easelife.PNG')}}"></a>
                     </li>
                     <li> <a href="{{route('home.service_categories')}}">Service Categories</a></li>
                     {{-- <li> <a href="javascript:void(0);">Air Conditioners</a>
@@ -75,19 +77,7 @@
                             <li><a href="service-details/ac-repair.html">Repair</a></li>
                         </ul>
                     </li> --}}
-                    <li> <a href="#">Appliances</a>
-                        <ul class="drop-down one-column hover-fade">
-                            <li><a href="servicesbycategory/11.html">Computer Repair</a></li>
-                            <li><a href="servicesbycategory/12.html">TV</a></li>
-                            <li><a href="servicesbycategory/1.html">AC</a></li>
-                            <li><a href="servicesbycategory/14.html">Geyser</a></li>
-                            <li><a href="servicesbycategory/21.html">Washing Machine</a></li>
-                            <li><a href="servicesbycategory/22.html">Microwave Oven</a></li>
-                            <li><a href="servicesbycategory/9.html">Chimney and Hob</a></li>
-                            <li><a href="servicesbycategory/10.html">Water Purifier</a></li>
-                            <li><a href="servicesbycategory/13.html">Refrigerator</a></li>
-                        </ul>
-                    </li>
+
                     <li> <a href="#">Home Needs</a>
                         <ul class="drop-down one-column hover-fade">
                             <li><a href="servicesbycategory/19.html">Laundry</a></li>
@@ -128,40 +118,40 @@
                         </ul>
                     </li>
                     @if(Route::has('login'))
-                        @auth
-                            @if(Auth::user()->user_type === 'adm')
-                                <li class="login-form"> <a href="#" title="Register">My account(admin)</a>
-                                    <ul class="drop-down one-column hover-fade">
-                                        <li><a href="{{route('admin.dashboard')}}">Dashboard</a></li>
-                                        <li><a href="{{route('admin.service_categories')}}">Service Categories</a></li>
-                                        <li><a href="{{route('logout')}}" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">Logout</a></li>
-                                    </ul>
-                                </li>
-                            @elseif(Auth::user()->user_type === 'sp')
-                                <li class="login-form"> <a href="#" title="Register">My account(Service provider)</a>
-                                    <ul class="drop-down one-column hover-fade">
-                                        <li><a href="{{route('sprovider.dashboard')}}">Dashboard</a></li>
-                                        <li><a href="{{route('logout')}}" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">Logout</a></li>
-                                    </ul>
-                                </li>
-                            @else
-                                <li class="login-form"> <a href="#" title="Register">My account(Customer)</a>
-                                    <ul class="drop-down one-column hover-fade">
-                                        <li><a href="{{route('customer.dashboard')}}">Dashboard</a></li>
-                                        <li><a href="{{route('logout')}}" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">Logout</a></li>
-                                    </ul>
-                                </li>
-                            @endif 
-                            <form id="logout-form" method="POST" action="{{route('logout')}}">
-                                @csrf
-                            </form>
-                        
-                        @else
-                            <li class="login-form"> <a href="{{route('register')}}" title="Register">Register</a></li>
-                            <li class="login-form"> <a href="{{route('login')}}" title="Login">Login</a></li>
-                        @endif 
+                    @auth
+                    @if(Auth::user()->user_type === 'adm')
+                    <li class="login-form"> <a href="#" title="Register">My account(admin)</a>
+                        <ul class="drop-down one-column hover-fade">
+                            <li><a href="{{route('admin.dashboard')}}">Dashboard</a></li>
+                            <li><a href="{{route('admin.service_categories')}}">Service Categories</a></li>
+                            <li><a href="{{route('logout')}}" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">Logout</a></li>
+                        </ul>
+                    </li>
+                    @elseif(Auth::user()->user_type === 'sp')
+                    <li class="login-form"> <a href="#" title="Register">My account(Service provider)</a>
+                        <ul class="drop-down one-column hover-fade">
+                            <li><a href="{{route('sprovider.dashboard')}}">Dashboard</a></li>
+                            <li><a href="{{route('logout')}}" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">Logout</a></li>
+                        </ul>
+                    </li>
+                    @else
+                    <li class="login-form"> <a href="#" title="Register">My account(Customer)</a>
+                        <ul class="drop-down one-column hover-fade">
+                            <li><a href="{{route('customer.dashboard')}}">Dashboard</a></li>
+                            <li><a href="{{route('logout')}}" onclick="event.preventDefault(); document.getElementById('logout-form').submit();">Logout</a></li>
+                        </ul>
+                    </li>
                     @endif
-                    
+                    <form id="logout-form" method="POST" action="{{route('logout')}}">
+                        @csrf
+                    </form>
+
+                    @else
+                    <li class="login-form"> <a href="{{route('register')}}" title="Register">Register</a></li>
+                    <li class="login-form"> <a href="{{route('login')}}" title="Login">Login</a></li>
+                    @endif
+                    @endif
+
                     <li class="search-bar">
                     </li>
                 </ul>
@@ -226,7 +216,7 @@
                             <p class="text-xs-center crtext">&copy; 2024 EaseLife. All Rights Reserved.</p>
                         </div>
                     </div>
-                </div>                
+                </div>
             </div>
             <style>
                 .footer-v1 {
@@ -234,9 +224,11 @@
                     padding: 40px 0 20px;
                     color: #ffffff;
                 }
+
                 .footer-section {
                     margin-bottom: 20px;
                 }
+
                 .footer-title {
                     color: #ffffff;
                     font-weight: 600;
@@ -246,47 +238,57 @@
                     border-bottom: 2px solid #1f487e;
                     padding-bottom: 10px;
                 }
+
                 .footer-contact-list {
                     list-style: none;
                     padding: 0;
                 }
+
                 .footer-contact-list li {
                     margin-bottom: 10px;
                     display: flex;
                     align-items: center;
                 }
+
                 .footer-contact-list i {
                     margin-right: 12px;
                     color: #1f487e;
                     width: 20px;
                     text-align: center;
                 }
+
                 .footer-contact-list a {
                     color: #d9e5ff;
                     text-decoration: none;
                     transition: color 0.3s ease;
                 }
+
                 .footer-contact-list a:hover,
                 .footer-contact-list a:focus {
                     color: #ffffff;
                     text-decoration: underline;
                 }
+
                 .footer-contact-list span {
                     color: #d9e5ff;
                 }
+
                 .footer-description {
                     color: #d9e5ff;
                     line-height: 1.6;
                 }
+
                 .footer-social-links {
                     display: flex;
                     list-style: none;
                     padding: 0;
                     margin-top: 10px;
                 }
+
                 .footer-social-links li {
                     margin-right: 15px;
                 }
+
                 .footer-social-links a {
                     color: #1f487e;
                     font-size: 24px;
@@ -299,15 +301,18 @@
                     justify-content: center;
                     border-radius: 50%;
                 }
+
                 .footer-social-links a:hover {
                     color: #ffffff;
                     background-color: #1f487e;
                     transform: scale(1.1);
                 }
+
                 .footer-down {
                     background-color: #041f3d;
                     padding: 15px 0;
                 }
+
                 .nav-footer {
                     display: flex;
                     justify-content: flex-start;
@@ -315,27 +320,33 @@
                     padding: 0;
                     margin: 0;
                 }
+
                 .nav-footer li {
                     margin-right: 15px;
                 }
+
                 .nav-footer a {
                     color: #d9e5ff;
                     text-decoration: none;
                     transition: color 0.3s ease;
                 }
+
                 .nav-footer a:hover {
                     color: #ffffff;
                     text-decoration: underline;
                 }
+
                 .crtext {
                     color: #d9e5ff;
                     margin: 0;
                     text-align: right;
                 }
+
                 @media (max-width: 768px) {
                     .footer-social-links {
                         justify-content: center;
                     }
+
                     .crtext {
                         text-align: center;
                     }
@@ -367,7 +378,7 @@
     <script type="text/javascript" src="{{asset('assets/js/bootstrap3-typeahead.min.js')}}"></script>
     <script type="text/javascript" src="{{asset('assets/js/main.js')}}"></script>
     <script type="text/javascript">
-        jQuery(document).ready(function () {
+        jQuery(document).ready(function() {
             jQuery('.tp-banner').show().revolution({
                 dottedOverlay: "none",
                 delay: 5000,
@@ -382,4 +393,5 @@
     </script>
     @livewireScripts
 </body>
+
 </html>

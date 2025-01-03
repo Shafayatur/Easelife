@@ -7,6 +7,7 @@ use App\Models\Service;
 use App\Models\Booking;
 use App\Models\ServiceRequest;
 use App\Models\Notification;
+use App\Models\Payment;
 use Illuminate\Support\Facades\Log;
 
 class ServiceProviderDashboardComponent extends Component
@@ -144,7 +145,7 @@ class ServiceProviderDashboardComponent extends Component
         ]);
 
         try {
-            // Find the booking
+            // Try to find the booking or service request
             $booking = ServiceRequest::findOrFail($bookingId);
             
             \Log::info('Booking found', [
@@ -170,8 +171,11 @@ class ServiceProviderDashboardComponent extends Component
                 'user_id' => $booking->customer_id
             ]);
 
-            // Update payment status
-            $payment->status = 'completed';
+            // Update payment status, specifically for COD
+            if ($payment->payment_method === 'cod' && $payment->status === 'pending') {
+                $payment->status = 'completed';
+            }
+            
             $payment->payment_method = $payment->payment_method ?? 'manual';
             $payment->amount = $booking->total_price;
             $payment->save();
